@@ -1,0 +1,11 @@
+# lines starting with a hash, and empty lines, are ignored. Run
+#     gofomash -show-raw -f example_rules.txt
+# and then compare with
+#     gofomash -show -f example_rules.txt
+# to see things in more detail
+
+# a simple rule
+errors.New(fmt.Sprintf(a)) -> errors.New(a)
+
+# a rule that gets expanded
+errors.New(fmt.Sprintf(a, b…)) -> errors.Errorf(a, b…)
