@@ -23,6 +23,7 @@ var (
 	showRaw    bool
 	showRules  bool
 	carryOn    bool
+	dryRun     bool
 	maxEll     int
 	rootDir    string
 	ruleFile   string
@@ -38,6 +39,8 @@ func init() {
 	flag.BoolVar(&showRaw, "show-raw", false, "show raw rules, and exit")
 	flag.BoolVar(&showRules, "show", false, "show post-processed rules, and exit")
 	flag.BoolVar(&carryOn, "c", false, "continue past the first failure")
+	flag.BoolVar(&dryRun, "n", false,
+		"run all the rules, but against an empty go file\n(useful for validating your rules)")
 	flag.IntVar(&maxEll, "m", 7, "expand ellipsised rules up to this many vars")
 	flag.StringVar(&rootDir, "root", ".", "from where to start the walk")
 	flag.StringVar(&ruleFile, "f", "", "file from which to get rules")
@@ -191,32 +194,44 @@ func main() {
 	}
 
 	args := []string{"-s", "-s", mode}
-	n := 6
-	if err := filepath.Walk(rootDir, func(path string, info os.FileInfo, err error) error {
+	if dryRun {
+		f, err := ioutil.TempFile("", "")
 		if err != nil {
-			return err
+			log.Fatal(err)
 		}
-		if info.IsDir() {
-			if excluded[path] {
-				return filepath.SkipDir
+		defer f.Close()
+		defer os.Remove(f.Name())
+
+		fmt.Fprintln(f, "package foo")
+		args = append(args, f.Name())
+	} else {
+		n := 6
+		if err := filepath.Walk(rootDir, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
 			}
-		} else {
-			if excluded[path] {
-				return nil
+			if info.IsDir() {
+				if excluded[path] {
+					return filepath.SkipDir
+				}
+			} else {
+				if excluded[path] {
+					return nil
+				}
+				if path[0] != '.' && filepath.Ext(path) == ".go" {
+					args = append(args, path)
+					n += len(path)
+				}
 			}
-			if path[0] != '.' && filepath.Ext(path) == ".go" {
-				args = append(args, path)
-				n += len(path)
-			}
+			return nil
+		}); err != nil {
+			log.Fatal(err)
 		}
-		return nil
-	}); err != nil {
-		log.Fatal(err)
-	}
-	n += len(args)
-	if n > 2_000_000 {
-		// limit obtained from 'xargs --show-limits'; ymmv
-		log.Fatal("argument length dangeroulsy close to limit, this code needs work!")
+		n += len(args)
+		if n > 2_000_000 {
+			// limit obtained from 'xargs --show-limits'; ymmv
+			log.Fatal("argument length dangeroulsy close to limit, this code needs work!")
+		}
 	}
 
 	run(args, "-s")
