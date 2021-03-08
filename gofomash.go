@@ -46,7 +46,7 @@ func init() {
 	flag.StringVar(&ruleFile, "f", "", "file from which to get rules")
 	flag.Var(&extraRules, "r", "add an individual rule; can be specified multiple times")
 	flag.Var(&excludes, "x", `path to exclude, relative to root; can be specified multiple times
-(default {"vendor", ".git"})`)
+(default {"vendor", ".git", "build"})`)
 }
 
 const OK = "\r\033[38;5;034m✓\033[0m"
@@ -153,7 +153,7 @@ func main() {
 	flag.Parse()
 
 	if excludes == nil {
-		excludes = []string{"vendor", ".git"}
+		excludes = []string{"vendor", ".git", "build"}
 	}
 
 	if maxEll > 25 {
