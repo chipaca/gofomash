@@ -29,6 +29,7 @@ var (
 	ruleFile   string
 	extraRules multi
 	excludes   multi
+	binary     string
 )
 
 func init() {
@@ -47,11 +48,14 @@ func init() {
 	flag.Var(&extraRules, "r", "add an individual rule; can be specified multiple times")
 	flag.Var(&excludes, "x", `path to exclude, relative to root; can be specified multiple times
 (default {"vendor", ".git", "build"})`)
+	flag.StringVar(&binary, "binary", "gofmt", `binary to use (e.g. "goimports" or "gofumpt")`)
 }
 
-const OK = "\r\033[38;5;034m✓\033[0m"
-const NOK = "\r\033[38;5;124m×\033[0m"
-const ERR = "\r\033[38;5;124mℯ\033[0m"
+const (
+	OK  = "\r\033[38;5;034m✓\033[0m"
+	NOK = "\r\033[38;5;124m×\033[0m"
+	ERR = "\r\033[38;5;124mℯ\033[0m"
+)
 
 // globals are cool
 var failed bool
@@ -73,13 +77,13 @@ func shorten(s string) string {
 
 func run(args []string, rule string) {
 	if rule == "-s" {
-		fmt.Fprint(os.Stderr, "› gofmt -s")
+		fmt.Fprintf(os.Stderr, "› %s -s", binary)
 	} else {
-		fmt.Fprintf(os.Stderr, "› gofmt -r '%s'", shorten(rule))
+		fmt.Fprintf(os.Stderr, "› %s -r '%s'", binary, shorten(rule))
 		args[1] = rule
 	}
 
-	cmd := exec.Command("gofmt", args...)
+	cmd := exec.Command(binary, args...)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, ERR)
