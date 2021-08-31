@@ -17,24 +17,28 @@ import (
 	"golang.org/x/term"
 )
 
+const version = "0.0.2"
+
 var (
-	writeMode  bool
-	listMode   bool
-	showRaw    bool
-	showRules  bool
-	carryOn    bool
-	dryRun     bool
-	maxEll     int
-	rootDir    string
-	ruleFile   string
-	extraRules multi
-	excludes   multi
-	binary     string
+	writeMode   bool
+	listMode    bool
+	showRaw     bool
+	showRules   bool
+	carryOn     bool
+	dryRun      bool
+	showVersion bool
+	maxEll      int
+	rootDir     string
+	ruleFile    string
+	extraRules  multi
+	excludes    multi
+	binary      string
 )
 
 func init() {
 	log.SetFlags(0)
 
+	flag.BoolVar(&showVersion, "v", false, "print version and exit")
 	flag.BoolVar(&writeMode, "w", false, "write fixes to files instead of printing the diff and failing")
 	flag.BoolVar(&listMode, "l", false, "list failing files instead of printing the diff")
 	flag.BoolVar(&showRaw, "show-raw", false, "show raw rules, and exit")
@@ -156,6 +160,11 @@ func cook(rule string) []string {
 func main() {
 	flag.Parse()
 
+	if showVersion {
+		fmt.Println(version)
+		os.Exit(0)
+	}
+
 	if excludes == nil {
 		excludes = []string{"vendor", ".git", "build"}
 	}
@@ -208,6 +217,8 @@ func main() {
 
 		fmt.Fprintln(f, "package foo")
 		args = append(args, f.Name())
+	} else if extraArgs := flag.Args(); len(extraArgs) > 0 {
+		args = append(args, extraArgs...)
 	} else {
 		n := 6
 		if err := filepath.Walk(rootDir, func(path string, info os.FileInfo, err error) error {
