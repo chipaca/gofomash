@@ -17,7 +17,7 @@ import (
 	"golang.org/x/term"
 )
 
-const version = "0.0.2"
+const version = "0.0.3"
 
 var (
 	writeMode   bool
@@ -27,12 +27,13 @@ var (
 	carryOn     bool
 	dryRun      bool
 	showVersion bool
+	gofumpt     bool
 	maxEll      int
 	rootDir     string
 	ruleFile    string
+	goimports   string
 	extraRules  multi
 	excludes    multi
-	binary      string
 )
 
 func init() {
@@ -46,13 +47,14 @@ func init() {
 	flag.BoolVar(&carryOn, "c", false, "continue past the first failure")
 	flag.BoolVar(&dryRun, "n", false,
 		"run all the rules, but against an empty go file\n(useful for validating your rules)")
+	flag.BoolVar(&gofumpt, "gofumpt", false, `use gofumpt for first pass instead of "gofmt -s"`)
 	flag.IntVar(&maxEll, "m", 7, "expand ellipsised rules up to this many vars")
 	flag.StringVar(&rootDir, "root", ".", "from where to start the walk")
 	flag.StringVar(&ruleFile, "f", "", "file from which to get rules")
+	flag.StringVar(&goimports, "goimports", "", `also call "goimports", and pass it these options"`)
 	flag.Var(&extraRules, "r", "add an individual rule; can be specified multiple times")
 	flag.Var(&excludes, "x", `path to exclude, relative to root; can be specified multiple times
 (default {"vendor", ".git", "build"})`)
-	flag.StringVar(&binary, "binary", "gofmt", `binary to use (e.g. "goimports" or "gofumpt")`)
 }
 
 const (
@@ -80,14 +82,28 @@ func shorten(s string) string {
 }
 
 func run(args []string, rule string) {
-	if rule == "-s" {
-		fmt.Fprintf(os.Stderr, "› %s -s", binary)
-	} else {
-		fmt.Fprintf(os.Stderr, "› %s -r '%s'", binary, shorten(rule))
+	exe := "gofmt"
+	switch rule {
+	case "-s":
+		if gofumpt {
+			fmt.Fprint(os.Stderr, "› gofumpt")
+			exe = "gofumpt"
+			args = args[2:]
+		} else {
+			fmt.Fprint(os.Stderr, "› gofmt -s")
+		}
+	case "goimports":
+		fmt.Fprint(os.Stderr, "› goimports")
+		exe = "goimports"
+		args = args[1:]
+		args[0] = goimports
+	default:
+		// -r -> use plain gofmt
+		fmt.Fprintf(os.Stderr, "› %s -r '%s'", exe, shorten(rule))
 		args[1] = rule
 	}
 
-	cmd := exec.Command(binary, args...)
+	cmd := exec.Command(exe, args...)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, ERR)
@@ -250,6 +266,9 @@ func main() {
 	}
 
 	run(args, "-s")
+	if goimports != "" {
+		run(args, "goimports")
+	}
 
 	args[0] = "-r"
 	for _, rule := range rules {

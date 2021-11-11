@@ -23,4 +23,7 @@ and
 
 will both DTRT.
 
+It does a first pass calling `gofmt -s`, which you can switch to using `gofumpt` instead (with the `-gofumpt` option).
+You can also ask tht it does a second pass with `goimports` with the arguments you specify via the `-goimports` option. If you want to call `goimports` with no further arguments, `-goimports=-local` works.
+
 HTH, HAND!
